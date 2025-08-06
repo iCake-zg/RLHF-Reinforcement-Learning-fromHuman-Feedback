@@ -88,13 +88,7 @@
 
 ## 📎 项目结构说明（建议）
 
-rlhf/
-├── sft/ # SFT训练脚本与数据
-├── reward_model/ # 奖励模型训练与评估
-├── ppo/ # RLHF主流程（PPO优化）
-├── configs/ # 配置文件（训练/模型/日志）
-├── assets/ # 图片/可视化内容（如rlhf_diagram.png）
-└── README.md
+<pre lang="nohighlight"><code>## 📎 项目结构说明（建议） ```bash rlhf/ ├── sft/ # SFT训练脚本与数据 ├── reward_model/ # 奖励模型训练与评估 ├── ppo/ # RLHF主流程（PPO优化） ├── configs/ # 配置文件（训练/模型/日志） ├── assets/ # 图片/可视化内容（如rlhf_diagram.png） └── README.md ``` </code></pre>
 
 
 ---
