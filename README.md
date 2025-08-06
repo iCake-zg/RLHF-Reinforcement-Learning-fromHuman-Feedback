@@ -1,5 +1,3 @@
-# -RLHF-Reinforcement-Learning-fromHuman-Feedback
-
 
 # Reinforcement Learning from Human Feedback (RLHF)
 
