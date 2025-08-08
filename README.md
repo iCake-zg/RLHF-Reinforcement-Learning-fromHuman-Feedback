@@ -110,6 +110,61 @@
 - [ ] 增加实验日志与TensorBoard支持
 - [ ] 多模型支持（如 Qwen / LLaMA / Baichuan）
 
+
+启动前请先设置hf镜像地址
+```bash
+Linux： export HF_ENDPOINT=https://hf-mirror.com
+```
+生成文字：在sft文件夹下
+```bash
+CUDA_VISIBLE_DEVICE=0 python generate.py
+```
+
+sft训练
+```bash
+CUDA_VISIBLE_DEVICE=0 python train.py train
+```
+
+## 🙋 Question
+### Q1:
+Qwen默认没有eos_token和pad_token,所以需要手动添加这两个值
+```python
+tokenizer.pad_token = tokenizer.eos_token = "<|endoftext|>"
+model.config.pad_token_id = tokenizer.convert_tokens_to_ids("<|endoftext|>")
+```
+
+### Q2:
+
+
+
+## 🖇️ KEYWORD
+
+### model.vocab_size
+- 来源：模型配置文件中的vocab_size（需要做64对齐）
+- 作用：决定模型的Embedding层，以及LM HEAD的大小，即模型能直接处理的token ID 范围
+- 注意：如果给tokenizer添加了新的token但是没有调用 model.resize_token_embeddings(len(tokenizer))，那么 model.vocab_size 不会变。
+
+### tokenizer.vocab_size
+- 来源：分词器的词表大小 tokenizer.get_vocab()
+- 作用：反映当前分词器能识别的token总数
+- 注意：常见的预训练模型加载 model.vocab_size和 tokenizer 一样大
+- tokenizer中pad、bos、eos、unk token ID 是通过特殊值来区分的
+  - bos_token="[BOS]" pad_token="[PAD]" eos_token="[EOS]" unk_token="[UNK]"
+
+
+### DataCollatorForLanguageModeling（预训练时使用）
+
+```python
+data_collator = DataCollatorForLanguageModeling(
+    tokenizer=tokenizer,
+    mlm=False,
+)
+```
+- MLM(Masked Language Modeling) 是BERT一类的双向模型训练方式，随机把输入的一部分token换成[mask]标签，然后再让模型还原这些被mask掉的token。
+- CLM(Causal Language Modeling) 是GPT一类的单向模型训练方式，让模型预测第t个token时只能看到t-1个位置的信息，这样训练出来的模型只关注前后的相关性，不关注单词与单词之间的组合关系。CLM在推理时，每个token都是根据上文生成。但是BERT在推理时需要完整的上下文向量，然后才能计算每个token的mask logits。
+
+
+
 ---
 
 ## 📄 License
