@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 # 输入文本
-input_text = "你是什么模型"
+input_text = "介绍一下西安交通大学"
 # 直接使用本地模型路径
 model_path = "../configs/models/"
 
@@ -10,7 +10,8 @@ model_path = "../configs/models/"
 # 加载分词器
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-7B-Chat", 
                                           trust_remote_code=True,
-                                          cache_dir=model_path)
+                                          cache_dir=model_path,
+                                          local_files_only=True)  # 只使用本地文件
 # 编码输入
 inputs = tokenizer(input_text, return_tensors="pt")
 
@@ -18,12 +19,13 @@ inputs = tokenizer(input_text, return_tensors="pt")
 ## 加载原始模型（使用本地路径）
 base_model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-7B-Chat", 
                                                   cache_dir=model_path,
-                                                  trust_remote_code=True) # 只使用本地文件
+                                                  trust_remote_code=True,
+                                                  local_files_only=True) # 只使用本地文件
 
 
 ## 生成和解码
 base_output = base_model.generate(
-    **inputs, max_new_tokens=100, pad_token_id=tokenizer.eos_token_id
+    **inputs, max_new_tokens=500, pad_token_id=tokenizer.eos_token_id
 )
 base_result = tokenizer.decode(base_output[0], skip_special_tokens=True)
 

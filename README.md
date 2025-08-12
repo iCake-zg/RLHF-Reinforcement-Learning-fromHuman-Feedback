@@ -43,6 +43,23 @@
 - **训练方式**：
 - 通常基于预训练语言模型进行继续训练
 
+### 📊数据集：[text](configs/datasets/Belle_open_source_0.5M.json)
+- 数据模式：
+源自 Stanford-Alpaca 最早开源的指令微调数据结构，后来被 Belle、Vicuna、Open-Assistant 等中文社区直接沿用
+
+| 键名            | 作用              | 场景示例             |
+| --------------- | --------------- | ---------------- |
+| **instruction** | 描述“任务类型”或“高阶意图” | “将下列英文翻译成中文”|
+| **input**       | 真正的“待处理内容”      | “I love apples.” |
+| **output**      | 期望答案            | “我爱苹果。”          |
+
+- 为什么input为空？
+  - 简化标注：很多任务（开放式问答、创意写作、常识推理）本来就只有一句话指令，没必要再拆出第二个字段。
+  - 兼容旧脚本：早期开源仓库（如 alpaca-lora、Chinese-LLaMA-Alpaca）的 collator 默认把 instruction 和 input 拼成一条 prompt
+
+
+
+
 ---
 
 ## 2. Reward Model Training (RM)
@@ -117,12 +134,32 @@ Linux： export HF_ENDPOINT=https://hf-mirror.com
 ```
 生成文字：在sft文件夹下
 ```bash
-CUDA_VISIBLE_DEVICE=0 python generate.py
+CUDA_VISIBLE_DEVICES=0 python generate.py
 ```
 
 sft训练
 ```bash
-CUDA_VISIBLE_DEVICE=0 python train.py train
+CUDA_VISIBLE_DEVICES=0 python train.py icake-zg-train
+```
+
+
+对于sft训练保存的模型文件夹中，在模型文件中导入源模型文件的python文件
+```bash
+cp -f "$SRC/modeling_qwen.py" "$DST/"
+cp -f "$SRC/configuration_qwen.py" "$DST/"
+cp -f "$SRC/tokenization_qwen.py" "$DST/"
+touch "$DST/__init__.py"
+```
+
+修改"config.json"中的指向
+```json
+  "auto_map": {
+    "AutoConfig": "configuration_qwen.QWenConfig",
+    "AutoModelForCausalLM": "modeling_qwen.QWenLMHeadModel",
+    "AutoTokenizer":"tokenization_qwen.QWenTokenizer"
+  },
+
+  "vocab_size": 151851
 ```
 
 ## 🙋 Question

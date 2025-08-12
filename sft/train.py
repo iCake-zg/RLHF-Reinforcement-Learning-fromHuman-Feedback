@@ -34,11 +34,15 @@ def setup_qwen_model_and_tokenizer(model_path="../configs/models/"):
     model = AutoModelForCausalLM.from_pretrained(
         "Qwen/Qwen-7B-Chat",
         cache_dir=model_path,
-        torch_dtype=torch.float16,
-        device_map="auto",
+        torch_dtype=torch.float32,
+        bf16 = False,
+        fp32 = True,
         trust_remote_code=True,
         local_files_only=True
     )
+
+    model.config.use_cache = False  # 禁用缓存以支持梯度检查点
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})  # 启用梯度检查点以节省显存
 
     print("model.config.vocab_size =", model.config.vocab_size)
     print("tokenizer.vocab_size =", tokenizer.vocab_size)
@@ -55,7 +59,7 @@ def setup_qwen_model_and_tokenizer(model_path="../configs/models/"):
 
     # 设置特殊token
     if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token = "<|endoftext|>"
+        tokenizer.pad_token = "<|endoftext|>"
         model.config.pad_token_id = tokenizer.convert_tokens_to_ids("<|endoftext|>")
 
     print("eos_token:", tokenizer.eos_token)
@@ -77,17 +81,31 @@ def setup_qwen_model_and_tokenizer(model_path="../configs/models/"):
     trainable_params = 0
     total_params = 0
     
+    # for name, param in model.named_parameters():
+    #     total_params += param.numel()
+    #     # 检查是否是目标层
+    #     if "c_attn" in name or "c_proj" in name:
+    #         param.requires_grad = True
+    #         trainable_params += param.numel()
+    #         # print(f"解冻参数: {name}")
+
     for name, param in model.named_parameters():
         total_params += param.numel()
-        # 检查是否是目标层
-        if "c_attn" in name or "c_proj" in name:
-            param.requires_grad = True
-            trainable_params += param.numel()
-            # print(f"解冻参数: {name}")
+        # 只关心最后两层
+        if name.startswith("transformer.h.30.") or name.startswith("transformer.h.31."):
+            # 再细化到 c_attn / c_proj
+            if "c_attn" in name or "c_proj" in name:
+                param.requires_grad = True
+                trainable_params += param.numel()
+            else:
+                param.requires_grad = False    # 其余保持冻结
+        else:
+            param.requires_grad = False        # 其他层全部冻结
     
     print(f"可训练参数: {trainable_params:,}")
     print(f"总参数: {total_params:,}")
     print(f"可训练参数占比: {100 * trainable_params / total_params:.2f}%")
+    print(model.dtype)
     
     return model, tokenizer
 
@@ -242,6 +260,7 @@ def create_qwen_training_args(output_dir="./qwen-belle-attention-finetuned"):
         
         # 批次大小
         per_device_train_batch_size=2,  # 根据显存调整
+        dataloader_num_workers=0,
         per_device_eval_batch_size=2,
         gradient_accumulation_steps=8,   # 有效batch_size = 2*8 = 16
         
@@ -252,13 +271,15 @@ def create_qwen_training_args(output_dir="./qwen-belle-attention-finetuned"):
         
         # 精度和优化
         fp16=True,
+        bf16=False,
         dataloader_pin_memory=False,
         gradient_checkpointing=True,  # 节省显存
         
         # 日志和保存
-        logging_steps=50,
+        logging_steps=1,
         save_steps=500,
         eval_steps=500,
+        disable_tqdm=False,
         save_total_limit=3,
         
         # 评估设置
@@ -297,7 +318,6 @@ def main():
 
     
     #3. 加载和预处理数据
-    # 可以设置sample_size来使用部分数据进行测试
     processed_dataset = load_and_prepare_belle_data(
         tokenizer, 
         sample_size=10000  # 使用1万个样本进行测试，设为None使用全部数据
@@ -326,6 +346,23 @@ def main():
     print("lm_head out_features =", model.lm_head.weight.shape[0])
     print("tokenizer.vocab_size =", tokenizer.vocab_size)
 
+        ## 裁剪头
+    old_lm_head = model.lm_head
+    new_lm_head = torch.nn.Linear(
+        old_lm_head.in_features,
+        tokenizer.vocab_size,           # 151851
+        bias=old_lm_head.bias is not None
+    )
+    # 把前 151851 个权重拷过来
+    with torch.no_grad():
+        new_lm_head.weight[:151851] = old_lm_head.weight[:151851]
+        if old_lm_head.bias is not None:
+            new_lm_head.bias[:151851] = old_lm_head.bias[:151851]
+
+    new_lm_head = new_lm_head.to(model.dtype)   
+    model.lm_head = new_lm_head
+    model.config.vocab_size = tokenizer.vocab_size
+    print(model.dtype)
     print("new lm_head out_features =", model.lm_head.weight.shape[0])
     print("tokenizer.vocab_size     =", len(tokenizer))
 
@@ -341,27 +378,33 @@ def main():
         data_collator=data_collator,
     )
 
-    print(f"model vocab size: {model.config.vocab_size}")
-    print(f"pad_token_id: {tokenizer.pad_token_id}")
+    print(">>> 裸跑一步，看是否卡住...")
+    batch = data_collator([train_dataset[0]] * 2)   # 模拟一个 batch
+    batch = {k: v.to(model.device) for k, v in batch.items()}
+    with torch.no_grad():
+        outputs = model(**batch)
+    print("裸跑 loss =", outputs.loss.item())
+
+
     # 8. 开始训练
     print("开始训练...")
     trainer.train()
     
-    # #9. 保存模型
-    # print("保存模型...")
-    # trainer.save_model()
-    # tokenizer.save_pretrained(training_args.output_dir)
+    #9. 保存模型
+    print("保存模型...")
+    trainer.save_model()
+    tokenizer.save_pretrained(training_args.output_dir)
     
-    # # 10. 保存训练信息
-    # with open(os.path.join(training_args.output_dir, "training_info.json"), "w") as f:
-    #     json.dump({
-    #         "model_path": "../configs/models/Qwen/Qwen-7B-Chat",
-    #         "fine_tuned_layers": ["c_attn", "c_proj"],
-    #         "dataset": "BelleGroup/train_0.5M_CN",
-    #         "training_args": training_args.to_dict()
-    #     }, f, indent=2, ensure_ascii=False)
+    # 10. 保存训练信息
+    with open(os.path.join(training_args.output_dir, "training_info.json"), "w") as f:
+        json.dump({
+            "model_path": "../configs/models/Qwen/Qwen-7B-Chat",
+            "fine_tuned_layers": ["c_attn", "c_proj"],
+            "dataset": "BelleGroup/train_0.5M_CN",
+            "training_args": training_args.to_dict()
+        }, f, indent=2, ensure_ascii=False)
     
-    # print("训练完成！")
+    print("训练完成！")
 
 
 
@@ -432,10 +475,11 @@ def test_qwen_model(model_path="./qwen-belle-attention-finetuned", test_instruct
 # ===============================
 
 if __name__ == "__main__":
+    # main()
     import sys
     
     if len(sys.argv) > 1:
-        if sys.argv[1] == "train":
+        if sys.argv[1] == "icake-zg-train":
             main()
         elif sys.argv[1] == "test":
             model_path = sys.argv[2] if len(sys.argv) > 2 else "./qwen-belle-attention-finetuned"
