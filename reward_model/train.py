@@ -8,73 +8,80 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import LoraConfig, get_peft_model, PeftModel
 from datasets import load_dataset
 
+'''
+set model_path and data_path
+'''
 datasets_name = "HuggingFaceH4/ultrafeedback_binarized"
 datasets_path = "../configs/datasets/"
-model_path = "../configs/model/"
 model_name = "Qwen/Qwen-7B-Chat"
+model_path = "../configs/model/"
 
 
-def model_tokenizer_load(model_path):
 
+def model_tokenizer_load(model_path:str):
+    '''
     """加载模型和分词器"""
+    Args:
+        Input: 
+            model_path(str)
+
+        Return: 
+            model(object)
+            tokenizer(object)
+    '''
 
     model = AutoModelForCausalLM.from_pretrained(model_name,
                                                 cache_dir=model_path,
                                                  trust_remote_code=True,
                                                  local_files_only=True)
-
-
     tokenizer = AutoTokenizer.from_pretrained(model_name,
                                                 cache_dir = model_path,
                                                 local_files_only=True,
                                                 trust_remote_code=True)
+    
+    return model,tokenizer
 
 
-def check_model_base_parameters(model,tokenizer):
-    """
-    检查模型和分词器的参数
-    """
-    print("模型名称:", model.name_or_path)
-    print("模型数据类型:", model.dtype)
-    print("分词器名称:", tokenizer.name_or_path)
-    print("模型参数数量:", model.num_parameters())
-    print("分词器词汇表大小:", tokenizer.vocab_size)
-    print("模型词汇表大小:", model.config.vocab_size)
 
+def set_train_parameters(model:object,tarin_name:str):
+    '''
+    """设置训练参数"""
+    Args:
+        Input: 
+            model(object)
+            tarin_name(str): layers need to train
 
-def set_train_parameters(model,tarin_name:str):
-    """
-    设置训练参数
-    """
-
+        Return: 
+            PASS
+    '''
     total_params = 0
     train_params = 0
     for name,param in model.named_parameters():
         total_params += param.numel()   
-
         if name.startswith(tarin_name):
             param.requires_grad = True
             train_params += param.numel()
         else:
             param.requires_grad = False
-
     print(f"总参数量: {total_params}, 训练参数量: {train_params}",f"可训练参数占比: {100 * train_params / total_params:.2f}%")
 
+    pass
 
 
-def lora_set_train_parameters(model):
 
-    lora_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=["c_attn","c_proj"],
-    )
-    model = get_peft_model(model, lora_config)
-    print("LoRA 参数量:", model.print_trainable_parameters())
-    return model
+# def lora_set_train_parameters(model):
+
+#     lora_config = LoraConfig(
+#         r=8,
+#         lora_alpha=16,
+#         lora_dropout=0.05,
+#         bias="none",
+#         task_type="CAUSAL_LM",
+#         target_modules=["c_attn","c_proj"],
+#     )
+#     model = get_peft_model(model, lora_config)
+#     print("LoRA 参数量:", model.print_trainable_parameters())
+#     return model
 
 
 class DataParse(object):
@@ -105,21 +112,6 @@ class DataParse(object):
         return {"chosen_text":chosen_text,"rejected_text":rejected_text}
     
     
-
-def main():
-
-    #设置随机种子
-    torch.manual_seed(55)
-
-    #初始化模型和分词器
-    model,tokenizer = model_tokenizer_load()
-
-    #检查模型和分词器的参数
-    check_model_base_parameters(model,tokenizer)
-
-
-    processed_data = load_and_prepare_data(tokenizer,
-                                           simeple_size = 10000)
 
 
 
