@@ -36,10 +36,8 @@ def check_model_base_parameters(model,tokenizer):
 
 
 if __name__ == "__main__":
-
     model_path = "../configs/models/"
     model_name = "Qwen/Qwen-7B-Chat"
-
     model,tokenizer = model_tokenizer_load(
             model_path=model_path,
             model_name=model_name)

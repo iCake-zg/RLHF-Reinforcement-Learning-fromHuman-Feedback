@@ -7,36 +7,36 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import LoraConfig, get_peft_model, PeftModel
 from datasets import load_dataset
-
+from typing import List,Dict,Any
 '''
 set model_path and data_path
 '''
 datasets_name = "HuggingFaceH4/ultrafeedback_binarized"
 datasets_path = "../configs/datasets/"
+model_path = "../configs/models/"
 model_name = "Qwen/Qwen-7B-Chat"
-model_path = "../configs/model/"
 
 
 
-def model_tokenizer_load(model_path:str):
+def model_tokenizer_load(model_path,model_name):
+
     '''
     """加载模型和分词器"""
     Args:
         Input: 
-            model_path(str)
+            object:DataParse
 
         Return: 
-            model(object)
-            tokenizer(object)
+            datasets(object):load_dataset
     '''
 
     model = AutoModelForCausalLM.from_pretrained(model_name,
                                                 cache_dir=model_path,
-                                                 trust_remote_code=True,
-                                                 local_files_only=True)
+                                                 trust_remote_code=True)
+
+
     tokenizer = AutoTokenizer.from_pretrained(model_name,
                                                 cache_dir = model_path,
-                                                local_files_only=True,
                                                 trust_remote_code=True)
     
     return model,tokenizer
@@ -69,50 +69,68 @@ def set_train_parameters(model:object,tarin_name:str):
 
 
 
-# def lora_set_train_parameters(model):
+def lora_set_train_parameters(model):
 
-#     lora_config = LoraConfig(
-#         r=8,
-#         lora_alpha=16,
-#         lora_dropout=0.05,
-#         bias="none",
-#         task_type="CAUSAL_LM",
-#         target_modules=["c_attn","c_proj"],
-#     )
-#     model = get_peft_model(model, lora_config)
-#     print("LoRA 参数量:", model.print_trainable_parameters())
-#     return model
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM",
+        target_modules=["c_attn","c_proj"],
+    )
+    model = get_peft_model(model, lora_config)
+    print("LoRA 参数量:", model.print_trainable_parameters())
+    return model
+
+
 
 
 class DataParse(object):
 
-    def __init__(self,tokenizer,simple_size:int):
-        self.tokenizer = tokenizer
-        self.simple_size = simple_size
+    def __init__(self,
+                 tokenizer:None,
+                 sample_size:int,
+                 datasets_name:str,
+                 datasets_path:str):
+        super(DataParse).__init__()
 
-    def load_and_prepare_data(tokenizer,simeple_size:int):
-        datasets = load_dataset(datasets_name,split="train_prefs",
-                            cache_dir=datasets_path)
-        print(f"数据集 {datasets_name} 加载完成，数据集大小: {datasets.num_rows}")
+        self.tokenizer = tokenizer
+        self.sample_size = sample_size
+        self.datasets_name = datasets_name
+        self.datasets_path = datasets_path
+
+    def load_and_parse_data(self):
+        '''
+        """加载和处理数据"""
+        Args:
+            Input: 
+                object:DataParse
+
+            Return: 
+                datasets(object):load_dataset
+        '''
+        
+        # load datesets
+        datasets = load_dataset(self.datasets_name,split="train_prefs",cache_dir=self.datasets_path)
+        print(f"数据集{self.datasets_name}加载完成，数据集大小{datasets.num_rows}")
+
+        # Sample is Need
+        if self.sample_size and self.sample_size < datasets.num_rows :
+            datasets = datasets.select(range(self.sample_size))
+            print(f"采样后大小{datasets.num_rows}")
 
         return datasets
-
-    @classmethod
-    def chat_text(self,messages,add_generation_prompt = False,ensure_eos = True):
-        s = self.tokenizer.apply_chat_template(messages,tokenizer = False,add_generation_prompt = add_generation_prompt)
-        if ensure_eos and self.tokenizer.eos_token and not s.endswith(self.tokenizer.eos_token):
-            s += self.tokenizer.eos_token
-        return s
-    
-    @classmethod
-    def to_pair_text(self,example):
-        chosen_text = self.chat_text(example["chosen"])
-        rejected_text = self.chat_text(example["rejected"])
-        
-        return {"chosen_text":chosen_text,"rejected_text":rejected_text}
-    
     
 
 
+
+
+
+if __name__ == "__main__":
+
+    model,tokenizer = model_tokenizer_load(model_path=model_path,model_name=model_name)
+    dataparser = DataParse(sample_size=100,datasets_name=datasets_name,datasets_path = datasets_path,tokenizer=tokenizer)
+    datasets = dataparser.load_and_parse_data()
 
 
