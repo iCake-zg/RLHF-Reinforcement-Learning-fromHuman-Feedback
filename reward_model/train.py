@@ -4,13 +4,13 @@
 
 
 from transformers import(
-    AutoModelForCausalLM,
-    AutoTokenizer
+    DataCollatorForLanguageModeling,
+    Trainer
 )
 import torch
 from data_process import DataParse
 from model_infor_check import model_tokenizer_load
-
+from set_train_parameters import set_train_parameters
 
 
 
@@ -39,6 +39,52 @@ def train():
     dataloader = dataparser.create_DataLoader(processed_dataset, batch_size=4)
 
     # ===============================
-    # 3. 训练配置
+    # 3. 分割数据集
     # ===============================
+    train_test_split = processed_dataset.train_test_split(test_size=0.1,seed = 42)
+    train_dataset = train_test_split['train']
+    eval_dataset = train_test_split['test']
+    print(f"训练集大小: {len(train_dataset)}")
+    print(f"验证集大小: {len(eval_dataset)}")
+
+    # ===============================
+    # 4.数据集收集器
+    # ===============================
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        mlm = False,
+    )
+
+    # ===============================
+    # 5.设置训练参数
+    # ===============================
+    training_args = set_train_parameters("./qwen-RW-finetuned")
+
+    # ===============================
+    # 6.创建训练器
+    # ===============================
+    trainer = Trainer(
+        model = model,
+        args = training_args,
+        train_dataset = train_dataset,
+        eval_dataset = eval_dataset,
+        processing_class = tokenizer,
+        data_collator = data_collator
+    )
+
+    # ===============================
+    # 7.裸跑
+    # ===============================
+
+
+    # ===============================
+    # 8.训练
+    # ===============================
+
+
+    # ===============================
+    # 9.保存模型和训练信息
+    # ===============================
+
+
 
