@@ -21,7 +21,6 @@ def model_tokenizer_load(model_path,model_name):
     return model,tokenizer
                             
 
-
 def check_model_base_parameters(model,tokenizer):
     """
     检查模型和分词器的参数
