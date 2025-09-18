@@ -75,7 +75,6 @@ class DataParse(object):
                 formatted_message
         '''
         formatted_message = ""
-
         for message in messages:
             role = message["role"]
             content = message["content"]
@@ -84,7 +83,7 @@ class DataParse(object):
             elif role == "assistant":
                 formatted_message += f"<|im_start|>assistant\n{content}<|im_end|>\n"
 
-            return formatted_message.strip()
+        return formatted_message.strip()
 
     def creat_reward_pairs(self,example:Dict)  -> Dict:
         '''
@@ -268,8 +267,9 @@ if __name__ == "__main__":
     )
     raw_dataset = dataparser.load_and_parse_data()
     processed_dataset = dataparser.process_dataset_for_reward_model(raw_dataset)
-    # dataparser.save_processed_data(processed_date=processed_dataset,output_path='../configs/processed_data/')
 
+    # dataparser.save_processed_data(processed_date=processed_dataset,output_path='../configs/processed_data/')
+    print(processed_dataset[0])
     dataloader = dataparser.create_DataLoader(processed_dataset, batch_size=4)
     for batch in dataloader:
         print("Batch shapes:")

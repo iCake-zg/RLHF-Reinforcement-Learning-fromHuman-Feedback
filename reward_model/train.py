@@ -19,14 +19,46 @@ def train(model_name,model_path,datasets_name,datasets_path):
 
     torch.manual_seed(42)
     # ===============================
-    # 1. 模型和分词器初始化
+    # 1. 模型和分词器初始化,冻结非训练层，只解冻训练层
     # ===============================
     model,tokenizer = model_tokenizer_load(model_path=model_path,model_name=model_name)
     tokenizer.pad_token = tokenizer.eos_token = "<|endoftext|>"
     model.config.pad_token_id = tokenizer.convert_tokens_to_ids("<|endoftext|>")
 
+
     # ===============================
-    # 2. 数据处理和加载（针对Qwen格式）
+    # 2.冻结非训练层，只解冻训练层，打印训练参数
+    # ===============================
+    # initalize the trainable_params and total_params
+    trainable_params = 0
+    total_params = 0
+
+    # set all param.requires_grad = False
+    for param in model.parameters():
+         param.requires_grad = False
+
+    # statistical training params
+    for name,param in model.named_parameters():
+         total_params += param.numel()
+         # set last 2 layers
+         if name.startswith("transformer.h.30.") or name.startswith("transformer.h.31."):
+            if "c_attn" in name or "c_proj" in name:
+                param.requires_grad = True
+                trainable_params += param.numel()
+            else:
+                param.requires_grad = False
+         else:
+            param.requires_grad = False
+
+    # print parameters training
+    print(f"可训练参数: {trainable_params:,}")
+    print(f"总参数: {total_params:,}")
+    print(f"可训练参数占比: {100 * trainable_params / total_params:.2f}%")
+    print(model.dtype)
+
+
+    # ===============================
+    # 3. 数据处理和加载（针对Qwen格式）
     # ===============================
     dataparser = DataParse(
         tokenizer=tokenizer,
@@ -38,16 +70,16 @@ def train(model_name,model_path,datasets_name,datasets_path):
     raw_dataset = dataparser.load_and_parse_data()
     processed_dataset = dataparser.process_dataset_for_reward_model(raw_dataset)
     # give up the dataloader there
-    dataloader = dataparser.create_DataLoader(processed_dataset, batch_size=4)
 
     # ===============================
-    # 3. 分割数据集
+    # 4. 分割数据集
     # ===============================
     train_test_split = processed_dataset.train_test_split(test_size=0.1,seed = 42)
     train_dataset = train_test_split['train']
     eval_dataset = train_test_split['test']
     print(f"训练集大小: {len(train_dataset)}")
     print(f"验证集大小: {len(eval_dataset)}")
+    print(train_dataset[0])
 
     # ===============================
     # 4.数据集收集器
@@ -64,15 +96,15 @@ def train(model_name,model_path,datasets_name,datasets_path):
         自定义数据收集器类： RewardModelDataCollator(CLASS)
     '''
 
-    data_collator = RewardModelDataCollator(
-         tokenizer=tokenizer
-    )
-    data_loader = DataLoader(
-         processed_dataset,
-         batch_size = 8,
-         shuffle = True,
-         collate_fn = data_collator
-    )
+    # data_collator = RewardModelDataCollator(
+    #      tokenizer=tokenizer
+    # )
+    # data_loader = DataLoader(
+    #      processed_dataset,
+    #      batch_size = 8,
+    #      shuffle = True,
+    #      collate_fn = data_collator
+    # )
     
     # ===============================
     # 5.设置训练参数
@@ -94,13 +126,13 @@ def train(model_name,model_path,datasets_name,datasets_path):
     # ===============================
     # 7.裸跑
     # ===============================
-    print("=====================裸跑========================>>>>>>>>>>")
-    batch = data_collator([train_dataset[0]] * 4)
-    batch = {k: v.to(model.device) for k,v in batch.items()}
-    with torch.no_grad():
-            outputs = model(**batch)
-    print(batch)
-    print(outputs)
+    # print("=====================裸跑========================>>>>>>>>>>")
+    # batch = data_collator([train_dataset[0]] * 4)
+    # batch = {k: v.to(model.device) for k,v in batch.items()}
+    # with torch.no_grad():
+    #         outputs = model(**batch)
+    # print(batch)
+    # print(outputs)
 
     # ===============================
     # 8.训练
