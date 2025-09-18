@@ -167,14 +167,12 @@ class DataParse(object):
             desc = "Creating reward pairs"
         )
 
-        print(raw_dataset[0])
         # Tokenizer
         tokenized_dataset = reward_datasets.map(
             self.tokenizer_pair,
             desc = "Toknizer pairs",
             remove_columns = reward_datasets.column_names
         )
-        print(tokenized_dataset[0])
 
         return tokenized_dataset
     

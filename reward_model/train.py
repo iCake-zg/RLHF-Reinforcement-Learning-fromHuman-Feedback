@@ -8,13 +8,14 @@ from transformers import(
     Trainer
 )
 import torch
+from torch.utils.data import DataLoader
 from data_process import DataParse
 from model_infor_check import model_tokenizer_load
 from set_train_parameters import set_train_parameters
+from data_loader_for_RW import RewardModelDataCollator
 
 
-
-def train():
+def train(model_name,model_path,datasets_name,datasets_path):
 
     torch.manual_seed(42)
     # ===============================
@@ -36,6 +37,7 @@ def train():
     )
     raw_dataset = dataparser.load_and_parse_data()
     processed_dataset = dataparser.process_dataset_for_reward_model(raw_dataset)
+    # give up the dataloader there
     dataloader = dataparser.create_DataLoader(processed_dataset, batch_size=4)
 
     # ===============================
@@ -50,11 +52,28 @@ def train():
     # ===============================
     # 4.数据集收集器
     # ===============================
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer,
-        mlm = False,
-    )
+    '''
+        这个 collator 是为普通的语言模型训练设计的，它期望标准的 input_ids 字段，而不是我们 reward model 的配对数据格式(input_ids_chosen, input_ids_rejected)等
+    '''
+    # data_collator = DataCollatorForLanguageModeling(
+    #     tokenizer=tokenizer,
+    #     mlm = False,
+    # )
 
+    '''
+        自定义数据收集器类： RewardModelDataCollator(CLASS)
+    '''
+
+    data_collator = RewardModelDataCollator(
+         tokenizer=tokenizer
+    )
+    data_loader = DataLoader(
+         processed_dataset,
+         batch_size = 8,
+         shuffle = True,
+         collate_fn = data_collator
+    )
+    
     # ===============================
     # 5.设置训练参数
     # ===============================
@@ -75,7 +94,13 @@ def train():
     # ===============================
     # 7.裸跑
     # ===============================
-
+    print("=====================裸跑========================>>>>>>>>>>")
+    batch = data_collator([train_dataset[0]] * 4)
+    batch = {k: v.to(model.device) for k,v in batch.items()}
+    with torch.no_grad():
+            outputs = model(**batch)
+    print(batch)
+    print(outputs)
 
     # ===============================
     # 8.训练
@@ -88,3 +113,14 @@ def train():
 
 
 
+if __name__ == "__main__":
+    datasets_name = "HuggingFaceH4/ultrafeedback_binarized"
+    datasets_path = "../configs/datasets/"
+    model_path = "../configs/models/"
+    model_name = "Qwen/Qwen-7B-Chat"
+    train(
+        model_name=model_name,
+        model_path=model_path,
+        datasets_name=datasets_name,
+        datasets_path=datasets_path
+    )
