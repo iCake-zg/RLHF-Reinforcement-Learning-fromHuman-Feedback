@@ -18,6 +18,21 @@ from typing import Any
 
 def train(model_name,model_path,datasets_name,datasets_path):
 
+    # ===============================
+    # Check Check
+    # ===============================
+    print("=== CUDA检查 ===")
+    print(f"CUDA可用: {torch.cuda.is_available()}")
+    print(f"CUDA设备数量: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"当前CUDA设备: {torch.cuda.current_device()}")
+        print(f"设备名称: {torch.cuda.get_device_name()}")
+        print(f"CUDA版本: {torch.version.cuda}")
+    else:
+        print("CUDA不可用，将使用CPU")
+
+
+
     torch.manual_seed(42)
     # ===============================
     # 1. 模型和分词器初始化,冻结非训练层，只解冻训练层
@@ -63,10 +78,10 @@ def train(model_name,model_path,datasets_name,datasets_path):
     # ===============================
     dataparser = DataParse(
         tokenizer=tokenizer,
-        sample_size=1000,
+        sample_size=100,
         datasets_name=datasets_name,
         datasets_path =datasets_path,
-        max_length=2048
+        max_length=512
     )
     raw_dataset = dataparser.load_and_parse_data()
     processed_dataset = dataparser.process_dataset_for_reward_model(raw_dataset)
@@ -172,14 +187,14 @@ def train(model_name,model_path,datasets_name,datasets_path):
     '''
         自定义训练流程
     '''
-    print('============================== Self Train Begin=======================')
+    print('============================================================== Self Train Begin==============================================================')
     model.train()
     for epoch in range(3):
         print(f"\nEpoch {epoch + 1}/3")
 
-        for setp,batch in enumerate(tqdm(train_dataloader)):
-            batch = {k:v.to(model.device) if isinstance(v,torch.tensor) else v 
-                     for k,v in batch.item()}
+        for step,batch in enumerate(tqdm(train_dataloader)):
+            batch = {k:v.to(model.device) if isinstance(v,torch.Tensor) else v 
+                     for k,v in batch.items()}
             
             # Forward
             outputs = model(**batch)
