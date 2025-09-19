@@ -123,7 +123,9 @@ def train(model_name,model_path,datasets_name,datasets_path):
     # ===============================
     # 6.创建训练器
     # ===============================
-    '''传统Trainer 训练器'''
+    '''
+    =====================================Process 1: 传统Trainer 训练器=================================
+    '''
     # trainer = Trainer(
     #     model = model,
     #     args = training_args,
@@ -133,7 +135,9 @@ def train(model_name,model_path,datasets_name,datasets_path):
     #     data_collator = data_collator
     # )
 
-    '''自定义训练器 优化器 前向传播和损失'''
+    '''
+    ========================== Process 2: 自定义训练器 优化器 前向传播和损失=========================
+    '''
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=4,
@@ -171,21 +175,35 @@ def train(model_name,model_path,datasets_name,datasets_path):
 
 
     # ===============================
-    # 7.裸跑
+    # 7.裸跑 将模型和数据挪到GPU上
     # ===============================
-    # print("=====================裸跑========================>>>>>>>>>>")
+    # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Naked RUN>>>=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     # batch = data_collator([train_dataset[0]] * 4)
     # batch = {k: v.to(model.device) for k,v in batch.items()}
     # with torch.no_grad():
     #         outputs = model(**batch)
     # print("裸跑输出:",outputs)
 
+    # 在模型加载完成后，显式移动到GPU
+    print(f"模型加载前设备: {next(model.parameters()).device}")
+    if torch.cuda.is_available():
+        model = model.cuda()  # 或者 model = model.to('cuda:0')
+        print(f"模型移动到GPU后设备: {next(model.parameters()).device}")
+    else:
+        print("CUDA不可用，模型保持在CPU")
+
+
+
 
     # ===============================
     # 8.训练
     # ===============================
     '''
-        自定义训练流程
+        Process 1: Trainer 训练
+    '''
+    print('==============================================================Trainer Begin==============================================================')
+    '''
+        Process 2: 自定义训练流程
     '''
     print('============================================================== Self Train Begin==============================================================')
     model.train()
@@ -212,10 +230,13 @@ def train(model_name,model_path,datasets_name,datasets_path):
                 print(f"Step {step}: Loss={loss.item():.4f}, "
                     f"Chosen={chosen_rewards.mean().item():.4f}, "
                     f"Rejected={rejected_rewards.mean().item():.4f}")
+                
+
 
     # ===============================
     # 9.保存模型和训练信息
     # ===============================
+
 
 
 

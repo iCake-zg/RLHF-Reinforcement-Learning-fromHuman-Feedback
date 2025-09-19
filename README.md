@@ -9,16 +9,33 @@
 
 ![RLHF流程图](./assets/rlhf_diagram.png) <!-- 请确保图像路径正确 -->
 
+## 🐠飞书：
+https://jslv90rgc1.feishu.cn/wiki/N8pkwxPDfi431nk6jiwcAvHUnBb?from=from_copylink
+
 ---
 
 ## 📌 目录
 
-- [1. Supervised Fine-Tuning (SFT)](#1-supervised-fine-tuning-sft)
-- [2. Reward Model Training (RM)](#2-reward-model-training-rm)
-- [3. Policy Optimization (PPO)](#3-policy-optimization-ppo)
-- [📎 项目结构说明](#项目结构说明)
-- [🚧 TODO](#todo)
-- [📄 License](#license)
+- [Reinforcement Learning from Human Feedback (RLHF)](#reinforcement-learning-from-human-feedback-rlhf)
+  - [🐠飞书：](#飞书)
+  - [📌 目录](#-目录)
+  - [1. Supervised Fine-Tuning (SFT)](#1-supervised-fine-tuning-sft)
+    - [✅ 内容：](#-内容)
+    - [📊数据集：text](#数据集text)
+  - [2. Reward Model Training (RM)](#2-reward-model-training-rm)
+    - [✅ 内容：](#-内容-1)
+  - [](#)
+  - [3. Policy Optimization (PPO)](#3-policy-optimization-ppo)
+    - [✅ 内容：](#-内容-2)
+  - [📎 项目结构说明（建议）](#-项目结构说明建议)
+  - [🙋 Question](#-question)
+    - [Q1:](#q1)
+    - [Q2:](#q2)
+  - [🖇️ KEYWORD](#️-keyword)
+    - [model.vocab\_size](#modelvocab_size)
+    - [tokenizer.vocab\_size](#tokenizervocab_size)
+    - [DataCollatorForLanguageModeling（预训练时使用）](#datacollatorforlanguagemodeling预训练时使用)
+  - [📄 License](#-license)
 
 ---
 
@@ -76,13 +93,101 @@
 "rejected": "..."
 }
 ```
+- 数据集名称：HuggingFaceH4/ultrafeedback_binarized
+- 数据链接：https://huggingface.co/datasets/HuggingFaceH4/ultrafeedback_binarized
+- 数据集实例：
+```python
+{
+  "prompt": "how can i develop a habit of drawing daily",
+  "prompt_id": "086b3e24f29b8956a01059f79c56db35d118a06fb6b844b095737d042795cd43",
+  "chosen": [
+    {
+      "content": "how can i develop a habit of drawing daily",
+      "role": "user"
+    },
+    {
+      "content": "Developing a daily habit of drawing can be challenging but with consistent practice and a few tips, it can become an enjoyable and rewarding part of your daily routine. Here are some strategies to help you develop the habit of drawing daily:\n\n1. Set a specific time: Allocate a specific time of the day to draw. It could be in the morning, afternoon, or evening. Make drawing a part of your daily routine.\n2. Set a specific duration: Determine the amount of time you want to spend on drawing each day. It can be as little as 10 minutes or as long as an hour. Be consistent with the duration to help build the habit.\n3. Start small and simple: Don\\u2019t try to create a masterpiece every day, start with simple and easy-to-do sketches. Focus on improving your skills gradually.\n4. Use a variety of tools and mediums: Experiment with different tools like pencils, pens, markers, and different mediums like paper, canvas, or digital apps to keep your drawing practice interesting and engaging.\n5. Take breaks and rest: Taking breaks and resting after some time of drawing can help you avoid burnout and stay motivated.\n6. Challenge yourself: Set challenges like drawing objects from memory or a specific subject to improve your skills and keep your drawing practice interesting.\n7. Track your progress: Keep a record of your daily drawing practice and track your progress. This can be a source of motivation and help you see how far you\\u2019ve come.\n\nRemember, developing a habit takes time and patience. Stay consistent with your drawing practice, be flexible and open to trying new things, and with time, you\\u2019ll develop a habit of daily drawing that brings you joy and satisfaction.",
+      "role": "assistant"
+    }
+  ],
+  "rejected": [
+    {
+      "content": "how can i develop a habit of drawing daily",
+      "role": "user"
+    },
+    {
+      "content": "As an AI language model, I cannot personally develop habits for you. But, here are some tips for developing a habit of drawing daily:\n\n1. Start small: Start with simple drawings or doodles and gradually increase the complexity of your drawings.\n\n2. Set a schedule: Set a specific time every day to draw, and try to stick to it as much as possible.\n\n3. Make it fun: Don\\u2019t pressure yourself to create masterpieces every time you draw. Make it a relaxing and enjoyable experience.\n\n4. Use resources: There are many drawing tutorials available online. Use resources like YouTube or online drawing courses to help you improve your skills.\n\n5. Surround yourself with inspiration: Expose yourself to a variety of art forms, such as paintings, illustrations, and photographs, to inspire and motivate you.\n\nRemember, everyone has their own creative style and pace. Just keep practicing and enjoying the process of drawing.",
+      "role": "assistant"
+    }
+  ],
+  "messages": [
+    {
+      "content": "how can i develop a habit of drawing daily",
+      "role": "user"
+    },
+    {
+      "content": "Developing a daily habit of drawing can be challenging but with consistent practice and a few tips, it can become an enjoyable and rewarding part of your daily routine. Here are some strategies to help you develop the habit of drawing daily:\n\n1. Set a specific time: Allocate a specific time of the day to draw. It could be in the morning, afternoon, or evening. Make drawing a part of your daily routine.\n2. Set a specific duration: Determine the amount of time you want to spend on drawing each day. It can be as little as 10 minutes or as long as an hour. Be consistent with the duration to help build the habit.\n3. Start small and simple: Don\\u2019t try to create a masterpiece every day, start with simple and easy-to-do sketches. Focus on improving your skills gradually.\n4. Use a variety of tools and mediums: Experiment with different tools like pencils, pens, markers, and different mediums like paper, canvas, or digital apps to keep your drawing practice interesting and engaging.\n5. Take breaks and rest: Taking breaks and resting after some time of drawing can help you avoid burnout and stay motivated.\n6. Challenge yourself: Set challenges like drawing objects from memory or a specific subject to improve your skills and keep your drawing practice interesting.\n7. Track your progress: Keep a record of your daily drawing practice and track your progress. This can be a source of motivation and help you see how far you\\u2019ve come.\n\nRemember, developing a habit takes time and patience. Stay consistent with your drawing practice, be flexible and open to trying new things, and with time, you\\u2019ll develop a habit of daily drawing that brings you joy and satisfaction.",
+      "role": "assistant"
+    }
+  ],
+  "score_chosen": 8.5,
+  "score_rejected": 8.5
+}
+```
+- datasets[0]地址：RLHF-Reinforcement-Learning-fromHuman-Feedback/reward_model/data[0]view.json
 
 - **结构设计**：
-- 在语言模型顶部添加一个回归头（通常是一层线性层）
+- 模型改动：只改动 transformer.h.30/31.c_atten/c_proj ,冻结其他层
+- 数据设计：
+```python
+# CHOSEN
+<|im_start|>user
+how can i develop a habit of drawing daily<|im_end|>
+<|im_start|>assistant
+Developing a daily habit of drawing can be challenging but with consistent practice ...<|im_end|>
+
+#REJECTED
+<|im_start|>user
+how can i develop a habit of drawing daily<|im_end|>
+<|im_start|>assistant
+As an AI language model, I cannot personally develop habits for you. But ...<|im_end|>
+```
+
 
 - **损失函数**：
 - Pairwise Ranking Loss（成对排序损失）
-
+```python
+def compute_reward_loss(rewards):
+    """
+    计算reward model的preference loss
+    rewards: shape (batch_size*2, 1) 或 (batch_size*2,)
+    前半部分是chosen的rewards，后半部分是rejected的rewards
+    """
+    batch_size = rewards.shape[0] // 2
+    chosen_rewards = rewards[:batch_size]      # 前半部分：chosen
+    rejected_rewards = rewards[batch_size:]    # 后半部分：rejected
+    
+    # Preference loss: chosen应该比rejected得分更高
+    loss = -torch.log(torch.sigmoid(chosen_rewards - rejected_rewards)).mean()
+    return loss, chosen_rewards, rejected_rewards
+```
+- **代码结构**
+<pre lang="nohighlight">
+  <code>## 📎 项目结构说明（建议） 
+```bash rlhf/reward_model
+              ├── qwen-RW-finetuned/ # 奖励模型调整后的保存路径
+              ├── data_process.py / # 对源数据进行处理
+              ├── data[0]view_after_tokenizer.json / # tokenizer之后的第一条源数据
+              ├── data[0]view.json / # 第一条源数据
+              ├── dowanload_datasets.py / # 下载数据集
+              ├── lora_set_train_parameters.py / # LoRA的参数设置（如果加入LoRA）
+              ├── model_infor_check.py / # 模型基础信息检查
+              ├── reward_data_collator_for_RW.py # 针对奖励模型的数据收集器 
+              ├── set_train_parameters.py # 为 Transformer.Trainer 设置的训练参数 
+              └── train.py  # 主训练流程
+``` 
+  </code>
+</pre>
 ---
 
 ## 3. Policy Optimization (PPO)
