@@ -379,6 +379,7 @@ def main():
     )
 
     print(">>> 裸跑一步，看是否卡住...")
+    print(train_dataset[0])
     batch = data_collator([train_dataset[0]] * 2)   # 模拟一个 batch
     batch = {k: v.to(model.device) for k, v in batch.items()}
     with torch.no_grad():
@@ -386,25 +387,25 @@ def main():
     print("裸跑 loss =", outputs.loss.item())
 
 
-    # 8. 开始训练
-    print("开始训练...")
-    trainer.train()
+    # # 8. 开始训练
+    # print("开始训练...")
+    # trainer.train()
     
-    #9. 保存模型
-    print("保存模型...")
-    trainer.save_model()
-    tokenizer.save_pretrained(training_args.output_dir)
+    # #9. 保存模型
+    # print("保存模型...")
+    # trainer.save_model()
+    # tokenizer.save_pretrained(training_args.output_dir)
     
-    # 10. 保存训练信息
-    with open(os.path.join(training_args.output_dir, "training_info.json"), "w") as f:
-        json.dump({
-            "model_path": "../configs/models/Qwen/Qwen-7B-Chat",
-            "fine_tuned_layers": ["c_attn", "c_proj"],
-            "dataset": "BelleGroup/train_0.5M_CN",
-            "training_args": training_args.to_dict()
-        }, f, indent=2, ensure_ascii=False)
+    # # 10. 保存训练信息
+    # with open(os.path.join(training_args.output_dir, "training_info.json"), "w") as f:
+    #     json.dump({
+    #         "model_path": "../configs/models/Qwen/Qwen-7B-Chat",
+    #         "fine_tuned_layers": ["c_attn", "c_proj"],
+    #         "dataset": "BelleGroup/train_0.5M_CN",
+    #         "training_args": training_args.to_dict()
+    #     }, f, indent=2, ensure_ascii=False)
     
-    print("训练完成！")
+    # print("训练完成！")
 
 
 

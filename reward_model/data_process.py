@@ -242,15 +242,6 @@ class DataParse(object):
             'attention_mask_rejected': torch.stack([torch.tensor(item['attention_mask_rejected']) for item in batch]),
         }
 
-        
-
-        
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
@@ -269,7 +260,6 @@ if __name__ == "__main__":
     processed_dataset = dataparser.process_dataset_for_reward_model(raw_dataset)
 
     # dataparser.save_processed_data(processed_date=processed_dataset,output_path='../configs/processed_data/')
-    print(processed_dataset[0])
     dataloader = dataparser.create_DataLoader(processed_dataset, batch_size=4)
     for batch in dataloader:
         print("Batch shapes:")

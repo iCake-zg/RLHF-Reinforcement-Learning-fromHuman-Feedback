@@ -12,8 +12,9 @@ from torch.utils.data import DataLoader
 from data_process import DataParse
 from model_infor_check import model_tokenizer_load
 from set_train_parameters import set_train_parameters
-from data_loader_for_RW import RewardModelDataCollator
-
+from reward_data_collator_for_RW import RewardDataCollator,RewardDataCollatorConcatenated
+from tqdm import tqdm
+from typing import Any
 
 def train(model_name,model_path,datasets_name,datasets_path):
 
@@ -71,6 +72,7 @@ def train(model_name,model_path,datasets_name,datasets_path):
     processed_dataset = dataparser.process_dataset_for_reward_model(raw_dataset)
     # give up the dataloader there
 
+
     # ===============================
     # 4. 分割数据集
     # ===============================
@@ -79,7 +81,6 @@ def train(model_name,model_path,datasets_name,datasets_path):
     eval_dataset = train_test_split['test']
     print(f"训练集大小: {len(train_dataset)}")
     print(f"验证集大小: {len(eval_dataset)}")
-    print(train_dataset[0])
 
     # ===============================
     # 4.数据集收集器
@@ -95,33 +96,64 @@ def train(model_name,model_path,datasets_name,datasets_path):
     '''
         自定义数据收集器类： RewardModelDataCollator(CLASS)
     '''
-
-    # data_collator = RewardModelDataCollator(
-    #      tokenizer=tokenizer
-    # )
-    # data_loader = DataLoader(
-    #      processed_dataset,
-    #      batch_size = 8,
-    #      shuffle = True,
-    #      collate_fn = data_collator
-    # )
+    data_collator = RewardDataCollatorConcatenated(tokenizer = tokenizer)
     
+
     # ===============================
     # 5.设置训练参数
     # ===============================
     training_args = set_train_parameters("./qwen-RW-finetuned")
 
+
     # ===============================
     # 6.创建训练器
     # ===============================
-    trainer = Trainer(
-        model = model,
-        args = training_args,
-        train_dataset = train_dataset,
-        eval_dataset = eval_dataset,
-        processing_class = tokenizer,
-        data_collator = data_collator
+    '''传统Trainer 训练器'''
+    # trainer = Trainer(
+    #     model = model,
+    #     args = training_args,
+    #     train_dataset = train_dataset,
+    #     eval_dataset = eval_dataset,
+    #     processing_class = tokenizer,
+    #     data_collator = data_collator
+    # )
+
+    '''自定义训练器 优化器 前向传播和损失'''
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=4,
+        shuffle=True,
+        collate_fn=data_collator
     )
+    eval_dataloader = DataLoader(
+        eval_dataset,
+        batch_size=4,
+        shuffle=True,
+        collate_fn=data_collator
+    )
+    
+    # Optimizer
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr = 1e-5, 
+        weight_decay= 0.01
+        )
+
+    # Foward
+    def compute_reward_loss(rewards):
+        """
+        计算reward model的preference loss
+        rewards: shape (batch_size*2, 1) 或 (batch_size*2,)
+        前半部分是chosen的rewards，后半部分是rejected的rewards
+        """
+        batch_size = rewards.shape[0] // 2
+        chosen_rewards = rewards[:batch_size]      # 前半部分：chosen
+        rejected_rewards = rewards[batch_size:]    # 后半部分：rejected
+        
+        # Preference loss: chosen应该比rejected得分更高
+        loss = -torch.log(torch.sigmoid(chosen_rewards - rejected_rewards)).mean()
+        return loss, chosen_rewards, rejected_rewards
+
 
     # ===============================
     # 7.裸跑
@@ -131,13 +163,40 @@ def train(model_name,model_path,datasets_name,datasets_path):
     # batch = {k: v.to(model.device) for k,v in batch.items()}
     # with torch.no_grad():
     #         outputs = model(**batch)
-    # print(batch)
-    # print(outputs)
+    # print("裸跑输出:",outputs)
+
 
     # ===============================
     # 8.训练
     # ===============================
+    '''
+        自定义训练流程
+    '''
+    print('============================== Self Train Begin=======================')
+    model.train()
+    for epoch in range(3):
+        print(f"\nEpoch {epoch + 1}/3")
 
+        for setp,batch in enumerate(tqdm(train_dataloader)):
+            batch = {k:v.to(model.device) if isinstance(v,torch.tensor) else v 
+                     for k,v in batch.item()}
+            
+            # Forward
+            outputs = model(**batch)
+            rewards = outputs.logits.squeeze(-1) if hasattr(outputs,'logits') else outputs.squeeze(-1)
+
+            # Loss
+            loss,chosen_rewards,rejected_rewards = compute_reward_loss(rewards=rewards)
+
+            # Backward
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if step % 50 == 0:
+                print(f"Step {step}: Loss={loss.item():.4f}, "
+                    f"Chosen={chosen_rewards.mean().item():.4f}, "
+                    f"Rejected={rejected_rewards.mean().item():.4f}")
 
     # ===============================
     # 9.保存模型和训练信息
